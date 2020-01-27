@@ -75,6 +75,7 @@ LIBBPF_0.0.1 {
 		bpf_program__is_socket_filter;
 		bpf_program__is_tracepoint;
 		bpf_program__is_xdp;
+		bpf_program__is_lsmpp;
 		bpf_program__load;
 		bpf_program__next;
 		bpf_program__nth_fd;
@@ -95,6 +96,7 @@ LIBBPF_0.0.1 {
 		bpf_program__set_tracepoint;
 		bpf_program__set_type;
 		bpf_program__set_xdp;
+		bpf_program__set_lsmpp;
 		bpf_program__title;
 		bpf_program__unload;
 		bpf_program__unpin;

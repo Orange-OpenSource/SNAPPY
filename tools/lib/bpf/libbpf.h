@@ -630,6 +630,9 @@ bpf_program__bpil_offs_to_addr(struct bpf_prog_info_linear *info_linear);
  */
 LIBBPF_API int libbpf_num_possible_cpus(void);
 
+LIBBPF_API int bpf_prog__set_lsmpp(struct bpf_program* prog);
+LIBBPF_API bool bpf_program__is_lsmpp(const struct bpf_program* prog);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

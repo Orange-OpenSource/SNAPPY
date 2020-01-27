@@ -4936,6 +4936,7 @@ BPF_PROG_TYPE_FNS(raw_tracepoint, BPF_PROG_TYPE_RAW_TRACEPOINT);
 BPF_PROG_TYPE_FNS(xdp, BPF_PROG_TYPE_XDP);
 BPF_PROG_TYPE_FNS(perf_event, BPF_PROG_TYPE_PERF_EVENT);
 BPF_PROG_TYPE_FNS(tracing, BPF_PROG_TYPE_TRACING);
+BPF_PROG_TYPE_FNS(lsmpp, BPF_PROG_TYPE_LSMPP);
 
 enum bpf_attach_type
 bpf_program__get_expected_attach_type(struct bpf_program *prog)
@@ -5030,6 +5031,8 @@ static const struct {
 						BPF_LIRC_MODE2),
 	BPF_APROG_SEC("flow_dissector",		BPF_PROG_TYPE_FLOW_DISSECTOR,
 						BPF_FLOW_DISSECTOR),
+	BPF_APROG_SEC("lsmpp",				BPF_PROG_TYPE_LSMPP,
+						BPF_LSMPP),
 	BPF_EAPROG_SEC("cgroup/bind4",		BPF_PROG_TYPE_CGROUP_SOCK_ADDR,
 						BPF_CGROUP_INET4_BIND),
 	BPF_EAPROG_SEC("cgroup/bind6",		BPF_PROG_TYPE_CGROUP_SOCK_ADDR,

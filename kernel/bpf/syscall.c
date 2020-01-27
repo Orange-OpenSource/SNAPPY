@@ -2106,6 +2106,9 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	case BPF_CGROUP_SETSOCKOPT:
 		ptype = BPF_PROG_TYPE_CGROUP_SOCKOPT;
 		break;
+	case BPF_LSMPP:
+		ptype = BPF_PROG_TYPE_LSMPP;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2129,6 +2132,9 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 		break;
 	case BPF_PROG_TYPE_FLOW_DISSECTOR:
 		ret = skb_flow_dissector_bpf_prog_attach(attr, prog);
+		break;
+	case BPF_PROG_TYPE_LSMPP:
+		ret = lsmpp_prog_attach(attr, prog);
 		break;
 	default:
 		ret = cgroup_bpf_prog_attach(attr, ptype, prog);
