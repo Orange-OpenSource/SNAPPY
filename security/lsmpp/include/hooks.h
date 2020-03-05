@@ -1,0 +1,3 @@
+LSMPP_HOOK_INIT(BPRM_CHECK_SECURITY, bprm_check_security)
+LSMPP_HOOK_INIT(FILE_OPEN, file_open)
+LSMPP_HOOK_INIT(MMAP_FILE, mmap_file)
