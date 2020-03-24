@@ -66,7 +66,7 @@ BPF_PROG_TYPE(BPF_PROG_TYPE_SK_REUSEPORT, sk_reuseport,
 	      struct sk_reuseport_md, struct sk_reuseport_kern)
 #endif
 #ifdef CONFIG_SECURITY_LSMPP
-BPF_PROG_TYPE(BPF_PROG_TYPE_LSMPP, lsmpp)
+BPF_PROG_TYPE(BPF_PROG_TYPE_LSMPP, lsmpp, struct lsmpp_ctx*, struct lsmpp_ctx*)
 #endif
 
 BPF_MAP_TYPE(BPF_MAP_TYPE_ARRAY, array_map_ops)

@@ -52,6 +52,10 @@ tprogs-y += xdp_sample_pkts
 tprogs-y += ibumad
 tprogs-y += hbm
 
+#tprogs-y += lsmpp
+tprogs-y += lsmpp2
+
+
 # Libbpf dependencies
 LIBBPF = $(TOOLS_PATH)/lib/bpf/libbpf.a
 
@@ -107,6 +111,8 @@ task_fd_query-objs := bpf_load.o task_fd_query_user.o $(TRACE_HELPERS)
 xdp_sample_pkts-objs := xdp_sample_pkts_user.o $(TRACE_HELPERS)
 ibumad-objs := bpf_load.o ibumad_user.o $(TRACE_HELPERS)
 hbm-objs := bpf_load.o hbm.o $(CGROUP_HELPERS)
+#lsmpp-objs := lsmpp_user.o $(TRACE_HELPERS)
+lsmpp2-objs := lsmpp2_user.o $(TRACE_HELPERS)
 
 # Tell kbuild to always build the programs
 always := $(tprogs-y)
@@ -168,6 +174,8 @@ always += ibumad_kern.o
 always += hbm_out_kern.o
 always += hbm_edt_kern.o
 always += xdpsock_kern.o
+#always += lsmpp_kern.o
+always += lsmpp2_kern.o
 
 ifeq ($(ARCH), arm)
 # Strip all except -D__LINUX_ARM_ARCH__ option needed to handle linux

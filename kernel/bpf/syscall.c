@@ -15,6 +15,9 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/license.h>
+
+#include <linux/lsmpp.h>
+
 #include <linux/filter.h>
 #include <linux/version.h>
 #include <linux/kernel.h>
@@ -1735,6 +1738,7 @@ static int bpf_prog_load(union bpf_attr *attr, union bpf_attr __user *uattr)
 		return -E2BIG;
 	if (type != BPF_PROG_TYPE_SOCKET_FILTER &&
 	    type != BPF_PROG_TYPE_CGROUP_SKB &&
+		type != BPF_PROG_TYPE_LSMPP &&
 	    !capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
@@ -2051,7 +2055,7 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	struct bpf_prog *prog;
 	int ret;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (attr->attach_type != BPF_LSMPP && !capable(CAP_NET_ADMIN))
 		return -EPERM;
 
 	if (CHECK_ATTR(BPF_PROG_ATTACH))
@@ -2846,8 +2850,7 @@ static int bpf_btf_load(const union bpf_attr *attr)
 {
 	if (CHECK_ATTR(BPF_BTF_LOAD))
 		return -EINVAL;
-
-	if (!capable(CAP_SYS_ADMIN))
+	if (sysctl_unprivileged_bpf_disabled && !capable(CAP_SYS_ADMIN)) // TODO: can we do w/o this hack?
 		return -EPERM;
 
 	return btf_new_fd(attr);

@@ -2817,12 +2817,20 @@ union bpf_attr {
  * 		value.
  *
  * int bpf_probe_read_kernel_str(void *dst, u32 size, const void *unsafe_ptr)
- * 	Description
+ *	Description
  * 		Copy a NUL terminated string from an unsafe kernel address *unsafe_ptr*
  * 		to *dst*. Same semantics as with bpf_probe_read_user_str() apply.
  * 	Return
  * 		On success, the strictly positive length of the string,	including
  * 		the trailing NUL character. On error, a negative value.
+ *
+ * int lsmpp_dynamic_call(struct lsmpp_ctx *ctx, int lib_id, u16 fun_id, void **args)
+ *	Description
+ *		This helper can be used to run a BPF_PROG_LSMPP programs
+ *		The helpers allows to execute a function from a dynamically built helper,
+ *		built by the administrator
+ *	Return
+ *		The return value of the helper is directly the result code of the helper
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -2940,8 +2948,8 @@ union bpf_attr {
 	FN(probe_read_user),		\
 	FN(probe_read_kernel),		\
 	FN(probe_read_user_str),	\
-	FN(probe_read_kernel_str),
-
+	FN(probe_read_kernel_str),	\
+	FN(lsmpp_dynamic_call),
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
  */
@@ -3690,5 +3698,24 @@ struct bpf_sockopt {
 	__s32	optlen;
 	__s32	retval;
 };
-
+struct lsmpp_bprm_ctx {
+    struct linux_binprm *bprm;
+};
+struct lsmpp_file_ctx {
+    struct file* file;
+};
+struct lsmpp_mmap_ctx {
+    struct file* file;
+    unsigned long reqprot;
+    unsigned long prot;
+    unsigned long flags;
+};
+struct lsmpp_ctx {
+    union {
+        struct lsmpp_bprm_ctx bprm_ctx;
+        struct lsmpp_file_ctx file_ctx;
+        struct lsmpp_mmap_ctx mmap_ctx;
+        // TODO more stuff to add!
+    };
+};
 #endif /* _UAPI__LINUX_BPF_H__ */

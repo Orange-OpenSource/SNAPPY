@@ -450,6 +450,7 @@ class PrinterHelpers(Printer):
             'struct sk_reuseport_md',
             'struct sockaddr',
             'struct tcphdr',
+            'struct lsmpp_ctx',
     }
     mapped_types = {
             'u8': '__u8',

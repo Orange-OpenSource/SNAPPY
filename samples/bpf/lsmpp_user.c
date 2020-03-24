@@ -8,7 +8,6 @@
 #include <linux/limits.h>
 #include <linux/bpf.h>
 #include <bpf/bpf.h>
-#include "bpf_load.h"
 #include "bpf/libbpf.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -18,22 +17,17 @@
 #include <fcntl.h>
 #include <sys/resource.h>
 
-#include <unistd.h>
-
 #include "perf-sys.h"
 #include "trace_helpers.h"
 #include "lsmpp_helpers.h"
 
-#define LSM_HOOK_PATH "/sys/kernel/security/lsmpp/bprm_check_security"
+#define LSM_HOOK_PATH "/sys/kernel/security/lsmpp/process_execution"
 
-#define IMAGE_ID "104f931f77ee"
+static int pmu_fds[MAX_CPUS];
+static struct perf_event_mmap_page *headers[MAX_CPUS];
 
-//static int pmu_fds[MAX_CPUS];
-//static struct perf_event_mmap_page *headers[MAX_CPUS];
-/*
 static int print_env(void *d, int size)
 {
-	printf("Begin\n");
 	struct lsmpp_env_value *env = d;
 	int times = env->times;
 	char *next = env->value;
@@ -43,12 +37,12 @@ static int print_env(void *d, int size)
 		printf("[p_pid=%u] WARNING! %s is set %u times\n",
 			env->p_pid, env->name, env->times);
 
-	*
+	/*
 	 * lsmpp_get_env_var ensures that even overflows
 	 * are null terminated. Incase of an overflow,
 	 * this logic tries to print as much information
 	 * that was gathered.
-	 *
+	 */
 	while (times && total < ENV_VAR_NAME_MAX_LEN) {
 		next += total;
 		if (env->overflow)
@@ -62,7 +56,7 @@ static int print_env(void *d, int size)
 	}
 
 	if (!env->times)
-		printf("[p_pid=%u] %s is not set\n",
+		printf("p_pid=%u] %s is not set\n",
 		       env->p_pid, env->name);
 
 	return LIBBPF_PERF_EVENT_CONT;
@@ -75,15 +69,15 @@ static int open_perf_events(int map_fd, int num)
 		.sample_type = PERF_SAMPLE_RAW,
 		.type = PERF_TYPE_SOFTWARE,
 		.config = PERF_COUNT_SW_BPF_OUTPUT,
-		.wakeup_events = 1, // get an fd notification for every event 
+		.wakeup_events = 1, /* get an fd notification for every event */
 	};
 
 	for (i = 0; i < num; i++) {
 		int key = i;
 		int ret;
 
-		ret = sys_perf_event_open(&attr, -1 *pid*, i*cpu*,
-					 -1 *group_fd*, 0);
+		ret = sys_perf_event_open(&attr, -1 /*pid*/, i/*cpu*/,
+					 -1/*group_fd*/, 0);
 		if (ret < 0)
 			return ret;
 		pmu_fds[i] = ret;
@@ -94,8 +88,8 @@ static int open_perf_events(int map_fd, int num)
 	}
 	return 0;
 }
-*/
-/*static int update_env_map(struct bpf_object *prog_obj, const char *env_var_name,
+
+static int update_env_map(struct bpf_object *prog_obj, const char *env_var_name,
 			  int numcpus)
 {
 	struct bpf_map *map;
@@ -128,19 +122,30 @@ out:
 	free(env);
 	return ret;
 }
-*/
+
 int main(int argc, char **argv)
 {
 	struct bpf_object *prog_obj;
-	//const char *env_var_name;
+	const char *env_var_name;
 	struct bpf_prog_load_attr attr;
-	int prog_fd, target_fd/*, map_fd*/;
-	int ret/*, i, numcpus*/;
-	//struct bpf_map *map;
+	int prog_fd, target_fd, map_fd;
+	int ret, i, numcpus;
+	struct bpf_map *map;
 	char filename[PATH_MAX];
-	//struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
+	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
 
-	//setrlimit(RLIMIT_MEMLOCK, &r);
+
+	if (argc != 2)
+		errx(EXIT_FAILURE, "Usage %s env_var_name\n", argv[0]);
+
+	env_var_name = argv[1];
+	if (strlen(env_var_name) > ENV_VAR_NAME_MAX_LEN - 1)
+		errx(EXIT_FAILURE,
+		     "<env_var_name> cannot be more than %d in length",
+		     ENV_VAR_NAME_MAX_LEN - 1);
+
+
+	setrlimit(RLIMIT_MEMLOCK, &r);
 	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
 	memset(&attr, 0, sizeof(struct bpf_prog_load_attr));
@@ -156,11 +161,11 @@ int main(int argc, char **argv)
 	if (bpf_prog_load_xattr(&attr, &prog_obj, &prog_fd))
 		err(EXIT_FAILURE, "Failed to load eBPF program");
 
-/*	numcpus = get_nprocs();
+	numcpus = get_nprocs();
 	if (numcpus > MAX_CPUS)
 		numcpus = MAX_CPUS;
 
-	//ret = update_env_map(prog_obj, env_var_name, numcpus);
+	ret = update_env_map(prog_obj, env_var_name, numcpus);
 	if (ret < 0)
 		err(EXIT_FAILURE, "Failed to update env map");
 
@@ -172,13 +177,12 @@ int main(int argc, char **argv)
 	map_fd = bpf_map__fd(map);
 	if (map_fd < 0)
 		err(EXIT_FAILURE, "Failed to get fd for perf events map");
-*/
+
 	ret = bpf_prog_attach(prog_fd, target_fd, BPF_LSMPP,
 			      BPF_F_ALLOW_OVERRIDE);
-//	read_trace_pipe();
 	if (ret < 0)
 		err(EXIT_FAILURE, "Failed to attach prog to LSM hook");
-/*
+
 	ret = open_perf_events(map_fd, numcpus);
 	if (ret < 0)
 		err(EXIT_FAILURE, "Failed to open perf events handler");
@@ -192,7 +196,5 @@ int main(int argc, char **argv)
 	if (ret < 0)
 		err(EXIT_FAILURE, "Failed to poll perf events");
 
-*/
-	system("docker start " IMAGE_ID " && docker exec " IMAGE_ID " sleep 10000000");
 	return EXIT_SUCCESS;
 }

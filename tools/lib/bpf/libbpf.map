@@ -67,6 +67,7 @@ LIBBPF_0.0.1 {
 		bpf_prog_test_run;
 		bpf_prog_test_run_xattr;
 		bpf_program__fd;
+		bpf_program__is_lsmpp;
 		bpf_program__is_kprobe;
 		bpf_program__is_perf_event;
 		bpf_program__is_raw_tracepoint;
@@ -75,7 +76,6 @@ LIBBPF_0.0.1 {
 		bpf_program__is_socket_filter;
 		bpf_program__is_tracepoint;
 		bpf_program__is_xdp;
-		bpf_program__is_lsmpp;
 		bpf_program__load;
 		bpf_program__next;
 		bpf_program__nth_fd;
@@ -86,6 +86,7 @@ LIBBPF_0.0.1 {
 		bpf_program__set_expected_attach_type;
 		bpf_program__set_ifindex;
 		bpf_program__set_kprobe;
+		bpf_program__set_lsmpp;
 		bpf_program__set_perf_event;
 		bpf_program__set_prep;
 		bpf_program__set_priv;
@@ -96,7 +97,6 @@ LIBBPF_0.0.1 {
 		bpf_program__set_tracepoint;
 		bpf_program__set_type;
 		bpf_program__set_xdp;
-		bpf_program__set_lsmpp;
 		bpf_program__title;
 		bpf_program__unload;
 		bpf_program__unpin;

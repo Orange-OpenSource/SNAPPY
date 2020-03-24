@@ -1,0 +1,6 @@
+break main
+break /home/user/linux-5.5/samples/bpf/test2.c:7
+disable $bpnum
+break /home/user/linux-5.5/samples/bpf/test2.c:9
+disable $bpnum
+
