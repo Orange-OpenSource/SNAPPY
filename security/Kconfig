@@ -34,8 +34,10 @@ config SECURITY
 
 config SECURITY_WRITABLE_HOOKS
 	depends on SECURITY
-	bool
+	bool "Allow to dynamically use hooks"
 	default n
+	help
+		This allows to use dynamic hooks. This feature is needed for LSM++
 
 config SECURITYFS
 	bool "Enable the securityfs filesystem"
@@ -238,6 +240,7 @@ source "security/loadpin/Kconfig"
 source "security/yama/Kconfig"
 source "security/safesetid/Kconfig"
 source "security/lockdown/Kconfig"
+source "security/lsmpp/Kconfig"
 
 source "security/integrity/Kconfig"
 

@@ -1885,8 +1885,13 @@ static __latent_entropy struct task_struct *copy_process(
 		 *   reuse it later for CLONE_PIDFD.
 		 * - CLONE_THREAD is blocked until someone really needs it.
 		 */
-		if (clone_flags & (CLONE_DETACHED | CLONE_THREAD))
+		if (clone_flags & (
+#ifndef CONFIG_LSMPP_NS //CLONE_DETACHED is disabled when LSMPP_NS is enabled.
+						CLONE_DETACHED | 
+#endif
+						CLONE_THREAD)) {
 			return ERR_PTR(-EINVAL);
+		}
 	}
 
 	/*
@@ -2677,14 +2682,13 @@ static bool clone3_args_valid(struct kernel_clone_args *kargs)
 	/* Verify that no unknown flags are passed along. */
 	if (kargs->flags & ~(CLONE_LEGACY_FLAGS | CLONE_CLEAR_SIGHAND))
 		return false;
-
-	/*
-	 * - make the CLONE_DETACHED bit reuseable for clone3
-	 * - make the CSIGNAL bits reuseable for clone3
-	 */
-	if (kargs->flags & (CLONE_DETACHED | CSIGNAL))
-		return false;
-
+	if (kargs->flags & (
+#ifndef CONFIG_LSMPP_NS //CLONE_DETACHED is disabled when LSMPP_NS is enabled.
+						CLONE_DETACHED | 
+#endif
+						CLONE_THREAD)) {
+			return false;
+		}
 	if ((kargs->flags & (CLONE_SIGHAND | CLONE_CLEAR_SIGHAND)) ==
 	    (CLONE_SIGHAND | CLONE_CLEAR_SIGHAND))
 		return false;
@@ -2821,7 +2825,7 @@ static int check_unshare_flags(unsigned long unshare_flags)
 	if (unshare_flags & ~(CLONE_THREAD|CLONE_FS|CLONE_NEWNS|CLONE_SIGHAND|
 				CLONE_VM|CLONE_FILES|CLONE_SYSVSEM|
 				CLONE_NEWUTS|CLONE_NEWIPC|CLONE_NEWNET|
-				CLONE_NEWUSER|CLONE_NEWPID|CLONE_NEWCGROUP))
+				CLONE_NEWUSER|CLONE_NEWPID|CLONE_NEWCGROUP|CLONE_NEWLSMPP))
 		return -EINVAL;
 	/*
 	 * Not implemented, but pretend it works if there is nothing

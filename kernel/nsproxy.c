@@ -23,7 +23,7 @@
 #include <linux/syscalls.h>
 #include <linux/cgroup.h>
 #include <linux/perf_event.h>
-
+#include <linux/lsmpp_namespace.h>
 static struct kmem_cache *nsproxy_cachep;
 
 struct nsproxy init_nsproxy = {
@@ -40,6 +40,7 @@ struct nsproxy init_nsproxy = {
 #ifdef CONFIG_CGROUPS
 	.cgroup_ns		= &init_cgroup_ns,
 #endif
+	.lsmpp_ns 		= &init_lsmpp_ns,
 };
 
 static inline struct nsproxy *create_nsproxy(void)
@@ -106,8 +107,16 @@ static struct nsproxy *create_new_namespaces(unsigned long flags,
 		goto out_net;
 	}
 
+	new_nsp->lsmpp_ns = copy_lsmpp_ns(flags, user_ns, tsk->nsproxy->lsmpp_ns);
+	if (IS_ERR(new_nsp->lsmpp_ns)) {
+		err = PTR_ERR(new_nsp->lsmpp_ns);
+		goto out_lsmpp;
+	}
+	
 	return new_nsp;
-
+out_lsmpp:
+	if (new_nsp->net_ns)
+		put_net(new_nsp->net_ns);
 out_net:
 	put_cgroup_ns(new_nsp->cgroup_ns);
 out_cgroup:
@@ -139,12 +148,17 @@ int copy_namespaces(unsigned long flags, struct task_struct *tsk)
 
 	if (likely(!(flags & (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
 			      CLONE_NEWPID | CLONE_NEWNET |
-			      CLONE_NEWCGROUP)))) {
+			      CLONE_NEWCGROUP | CLONE_NEWLSMPP)))) {
 		get_nsproxy(old_ns);
 		return 0;
 	}
 
-	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+	// We allow an unprivileged access only if the only new namespace is LSMPP
+	if (!ns_capable(user_ns, CAP_SYS_ADMIN) && (flags & 
+				(CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
+				CLONE_NEWPID | CLONE_NEWNET | CLONE_NEWCGROUP)
+			)
+	)
 		return -EPERM;
 
 	/*
@@ -176,6 +190,8 @@ void free_nsproxy(struct nsproxy *ns)
 		put_ipc_ns(ns->ipc_ns);
 	if (ns->pid_ns_for_children)
 		put_pid_ns(ns->pid_ns_for_children);
+	if(ns->lsmpp_ns)
+		put_lsmpp_ns(ns->lsmpp_ns);
 	put_cgroup_ns(ns->cgroup_ns);
 	put_net(ns->net_ns);
 	kmem_cache_free(nsproxy_cachep, ns);
@@ -192,11 +208,18 @@ int unshare_nsproxy_namespaces(unsigned long unshare_flags,
 	int err = 0;
 
 	if (!(unshare_flags & (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
-			       CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWCGROUP)))
+			       CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWCGROUP |
+			       CLONE_NEWLSMPP)))
 		return 0;
 
 	user_ns = new_cred ? new_cred->user_ns : current_user_ns();
-	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+
+    // We allow an unprivileged access only if the only new namespace is LSMPP
+    if (!ns_capable(user_ns, CAP_SYS_ADMIN) && (unshare_flags &
+                (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
+                CLONE_NEWPID | CLONE_NEWNET | CLONE_NEWCGROUP)
+            )
+    )
 		return -EPERM;
 
 	*new_nsp = create_new_namespaces(unshare_flags, current, user_ns,

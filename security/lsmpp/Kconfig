@@ -4,7 +4,8 @@ config SECURITY_LSMPP
         depends on SECURITYFS
         depends on BPF
         depends on BPF_SYSCALL
-       	select SECURITY_WRITABLE_HOOKS
+		depends on LSMPP_NS
+        select SECURITY_WRITABLE_HOOKS
         help
           This selects the Linux Security++ Framework which allows to execute
           eBPF programs dynamically in LSM hooks. These bpf programs can access
@@ -21,4 +22,4 @@ config SECURITY_LSMPP_ENFORCE
           eBPF programs attached to hooks can be used for both auditing and
           enforcement. Enabling enforcement implies that the evaluation result
           from the attached eBPF programs will allow and deny the operation
-          guarded by the security hook. 
+          guarded by the security hook.

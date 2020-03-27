@@ -18,9 +18,9 @@ BPF_CALL_4(lsmpp_dynamic_call, struct lsmpp_ctx*, ctx, int, lib_id, u16, fun_id,
 
     helper = helper_array.helpers[lib_id];
     dyn_func = (void*)(helper.helper + helper.offset);
-//todel printk(KERN_INFO "Ready to call func from BPF, (1st arg = %s)\n", args?(char*) args[0]:"none");
+	pr_debug("Ready to call func from BPF, (1st arg = %s)\n", args?(char*) args[0]:"none");
     fn_ret = dyn_func(args);
-//todel printk(KERN_INFO "Done, result = %d\n", fn_ret);
+	pr_debug("Done, result = %d\n", fn_ret);
     return fn_ret;
 }
 

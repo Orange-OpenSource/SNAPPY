@@ -65,7 +65,10 @@ int lsmpp_prog_attach(const union bpf_attr *attr, struct bpf_prog *prog) {
 
     new_entry = kmalloc(sizeof(struct lsmpp_helper_ctx), GFP_KERNEL);
     new_entry->nsproxy = current->nsproxy;
-    list_add_tail(&new_entry->list, &h->helper_ctx_list);
+    new_entry->pid = pid;
+	new_entry->pidns = task_active_pid_ns(current);
+	pr_debug("Attaching pid=%d, pidns=%p", new_entry->pid, new_entry->pidns);
+	list_add_tail(&new_entry->list, &h->helper_ctx_list);
 
     old_array = rcu_dereference_protected(h->progs,
                           lockdep_is_held(&h->mutex));

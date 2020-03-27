@@ -54,6 +54,7 @@ struct bpf_helper_array {
 extern struct bpf_helper_array helper_array;
 
 struct lsmpp_helper_ctx {
+	int pid;
 	struct nsproxy* nsproxy;
 	struct pid_namespace* pidns;
 	struct list_head list;

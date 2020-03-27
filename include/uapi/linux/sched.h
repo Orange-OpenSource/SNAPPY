@@ -22,7 +22,18 @@
 #define CLONE_SETTLS	0x00080000	/* create a new TLS for the child */
 #define CLONE_PARENT_SETTID	0x00100000	/* set the TID in the parent */
 #define CLONE_CHILD_CLEARTID	0x00200000	/* clear the TID in the child */
+
+#ifdef CONFIG_LSMPP_NS
+/* New LSMPP Namespace. 
+ * Since CLONE_DETACHED is the only unused bit, we need to undefine it.
+ * An alternative would be to support only the creation of LSMPP NS via the new
+ * clone3() syscall in order to have 64bit-flags but it would add usage complexity.
+ */
+#define CLONE_NEWLSMPP		0x00400000
+#else
 #define CLONE_DETACHED		0x00400000	/* Unused, ignored */
+#endif
+
 #define CLONE_UNTRACED		0x00800000	/* set if the tracing process can't force CLONE_PTRACE on this clone */
 #define CLONE_CHILD_SETTID	0x01000000	/* set the TID in the child */
 #define CLONE_NEWCGROUP		0x02000000	/* New cgroup namespace */
@@ -32,7 +43,6 @@
 #define CLONE_NEWPID		0x20000000	/* New pid namespace */
 #define CLONE_NEWNET		0x40000000	/* New network namespace */
 #define CLONE_IO		0x80000000	/* Clone io context */
-
 /* Flags for the clone3() syscall. */
 #define CLONE_CLEAR_SIGHAND 0x100000000ULL /* Clear any signal handler and reset to SIG_DFL. */
 
