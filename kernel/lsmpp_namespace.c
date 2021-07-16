@@ -19,19 +19,17 @@ static struct lsmpp_namespace *clone_lsmpp_ns(struct user_namespace *user_ns,
 {
 	struct lsmpp_namespace *ns;
 	int err;
+		
+	if(old_ns->level > 32) {
+		pr_err("Too much lsmpp ns\n");
+		return ERR_PTR(-EPERM);
+	}	
 
 	ns = kmalloc(sizeof(*ns), GFP_KERNEL);
 	if (ns)
 		kref_init(&ns->kref);
 	else
 		return ERR_PTR(-ENOMEM);
-	
-	if(ns->level > 32) {
-		pr_err("A thread can't create multiple LSM++ ns\n");
-		kfree(ns);
-		return ERR_PTR(-EPERM);
-	}
-	
 	err = ns_alloc_inum(&ns->ns);
 	if (err) {
 		kfree(ns);
@@ -39,10 +37,11 @@ static struct lsmpp_namespace *clone_lsmpp_ns(struct user_namespace *user_ns,
 	}
 	ns->ns.ops = &lsmppns_operations;
 	get_lsmpp_ns(old_ns);	
-	ns->level = old_ns->level;
+	ns->level = old_ns->level + 1;
 	ns->parent = old_ns;
 	ns->user_ns = get_user_ns(user_ns);
-
+	ns->state = 0; // Init
+	memset(ns->progs, 0, LSMPP_HOOK_TYPE_SIZE * sizeof(ns->progs[0]));
 	return ns;
 }
 
@@ -77,6 +76,17 @@ struct lsmpp_namespace *copy_lsmpp_ns(unsigned long flags,
 
 static void destroy_lsmpp_ns(struct lsmpp_namespace *ns)
 {
+	struct bpf_prog_array_item* item;
+	int i;
+	for(i=0; i<LSMPP_HOOK_TYPE_SIZE; ++i) { // We delete the progs stored in the NS
+		if(ns->progs[i] == NULL)
+			continue;
+		for (item = ns->progs[i]->items; item->prog; item++)
+			bpf_prog_put(item->prog);
+		
+		bpf_prog_array_free(ns->progs[i]);
+	}
+
 	put_user_ns(ns->user_ns);
 	ns_free_inum(&ns->ns);
 	kfree(ns);
@@ -88,12 +98,9 @@ void free_lsmpp_ns(struct kref *kref)
 	struct lsmpp_namespace *parent;
 
 	ns = container_of(kref, struct lsmpp_namespace, kref);
-//	while (ns != &init_lsmpp_ns) {
 	parent = ns->parent;
 	destroy_lsmpp_ns(ns);
 	put_lsmpp_ns(parent);
-//	ns = parent;
-//	}
 }
 
 static inline struct lsmpp_namespace *to_lsmpp_ns(struct ns_common *ns)
@@ -125,11 +132,18 @@ static void lsmppns_put(struct ns_common *ns)
 static int lsmppns_install(struct nsproxy *nsproxy, struct ns_common *new)
 {
 	struct lsmpp_namespace *ns = to_lsmpp_ns(new);
+	struct lsmpp_namespace *tmp = ns;
 
 	if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN) ||
-	    !ns_capable(current_user_ns(), CAP_SYS_ADMIN))
-		return -EPERM;
-
+	    !ns_capable(current_user_ns(), CAP_SYS_ADMIN)) {
+		do {
+			if(tmp == nsproxy->lsmpp_ns)
+				break; // Valid!
+			if(tmp == &init_lsmpp_ns)
+				return -EPERM;
+			tmp = tmp->parent;
+		} while(1);	
+	}
 	get_lsmpp_ns(ns);
 	put_lsmpp_ns(nsproxy->lsmpp_ns);
 	nsproxy->lsmpp_ns = ns;
