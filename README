@@ -8,6 +8,10 @@ SNAPPY (Safe Namespaceable And Pro-grammable PolicY) is a new framework that all
 
 The source code of SNAPPY is mainly contained in /security/lsmpp directory
 
+Usage: Compile the kernel and enable SNAPPY in kernel's configuration. You can then load security policies (see examples in samples/bpf/)
+
+** NOTE: This code is not ready from production and DOES contain bugs and vulnerabilities that remains to be fixed. DO NOT USE THIS VERSION IN PRODUCTION **
+
 Linux kernel
 ============
 
