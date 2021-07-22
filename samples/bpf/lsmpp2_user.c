@@ -1,14 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
-* Software Name : SNAPPY
-* Version: 0.0.1
-* SPDX-FileCopyrightText: Copyright (c) 2021 Orange
 *
-* This software is confidential and proprietary information of Orange.
-* You shall not disclose such Confidential Information and shall not copy, use or distribute it
-* in whole or in part without the prior written consent of Orange
+* SNAPPY Linux Security Module
 *
-* Author: Maxime Bélair
+* Author: Maxime Bélair <maxime.belair@orange.com>
+*
+* Copyright (C) 2020 - 2021 Orange
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

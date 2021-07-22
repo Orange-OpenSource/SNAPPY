@@ -1,3 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+*
+* SNAPPY Linux Security Module
+*
+* Author: Maxime Bélair <maxime.belair@orange.com>
+*
+* Copyright (C) 2020 - 2021 Orange
+*/
+
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/file.h>
