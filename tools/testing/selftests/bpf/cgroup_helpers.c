@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <ftw.h>
 
-
 #include "cgroup_helpers.h"
 
 /*

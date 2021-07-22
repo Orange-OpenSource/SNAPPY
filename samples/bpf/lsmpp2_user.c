@@ -1,4 +1,14 @@
-
+/*
+* Software Name : SNAPPY
+* Version: 0.0.1
+* SPDX-FileCopyrightText: Copyright (c) 2021 Orange
+*
+* This software is confidential and proprietary information of Orange.
+* You shall not disclose such Confidential Information and shall not copy, use or distribute it
+* in whole or in part without the prior written consent of Orange
+*
+* Author: Maxime Bélair
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +34,9 @@
 #include "trace_helpers.h"
 #include "lsmpp_helpers.h"
 
-#define LSM_HOOK_PATH "/sys/kernel/security/lsmpp/bprm_check_security"
+
+#define LSM_HOOK_PATH "/sys/kernel/security/lsmpp/policies/file_open"
+//#define LSM_HOOK_PATH "/mnt/lsmpp/bprm_check_security"
 
 #define IMAGE_ID "104f931f77ee"
 
@@ -141,6 +153,7 @@ int main(int argc, char **argv)
 	//struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
 
 	//setrlimit(RLIMIT_MEMLOCK, &r);
+	
 	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
 	memset(&attr, 0, sizeof(struct bpf_prog_load_attr));
@@ -193,6 +206,6 @@ int main(int argc, char **argv)
 		err(EXIT_FAILURE, "Failed to poll perf events");
 
 */
-	system("docker start " IMAGE_ID " && docker exec " IMAGE_ID " sleep 10000000");
+//	system("docker start " IMAGE_ID " && docker exec " IMAGE_ID " sleep 10000000");
 	return EXIT_SUCCESS;
 }

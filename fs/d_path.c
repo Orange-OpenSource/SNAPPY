@@ -189,6 +189,7 @@ char *__d_path(const struct path *path,
 		return NULL;
 	return res;
 }
+EXPORT_SYMBOL(__d_path);
 
 char *d_absolute_path(const struct path *path,
 	       char *buf, int buflen)

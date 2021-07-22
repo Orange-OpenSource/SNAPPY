@@ -6,7 +6,7 @@
 #include <linux/unistd.h>
 #include <asm/exec.h>
 #include <uapi/linux/binfmts.h>
-
+#include <asm/compat.h>
 struct filename;
 
 #define CORENAME_MAX_SIZE 128
@@ -119,7 +119,27 @@ extern void unregister_binfmt(struct linux_binfmt *);
 
 extern int prepare_binprm(struct linux_binprm *);
 extern int __must_check remove_arg_zero(struct linux_binprm *);
+
+// FIXME Hack to allow args in securit_bprm_check ==> TODO do it in a cleaner way
+
+/*struct user_arg_ptr {
+#ifdef CONFIG_COMPAT
+    bool is_compat;
+#endif
+    union {
+        const char __user *const __user *native;
+#ifdef CONFIG_COMPAT
+        const compat_uptr_t __user *compat;
+#endif
+    } ptr;
+};
+*/
+
+
+
+extern int search_binary_handler_argv(struct linux_binprm *, void** , void** );
 extern int search_binary_handler(struct linux_binprm *);
+
 extern int flush_old_exec(struct linux_binprm * bprm);
 extern void setup_new_exec(struct linux_binprm * bprm);
 extern void finalize_exec(struct linux_binprm *bprm);
@@ -131,7 +151,6 @@ extern int suid_dumpable;
 #define EXSTACK_DEFAULT   0	/* Whatever the arch defaults to */
 #define EXSTACK_DISABLE_X 1	/* Disable executable stacks */
 #define EXSTACK_ENABLE_X  2	/* Enable executable stacks */
-
 extern int setup_arg_pages(struct linux_binprm * bprm,
 			   unsigned long stack_top,
 			   int executable_stack);

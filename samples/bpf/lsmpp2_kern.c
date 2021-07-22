@@ -1,4 +1,14 @@
-
+/*
+* Software Name : SNAPPY
+* Version: 0.0.1
+* SPDX-FileCopyrightText: Copyright (c) 2021 Orange
+*
+* This software is confidential and proprietary information of Orange.
+* You shall not disclose such Confidential Information and shall not copy, use or distribute it
+* in whole or in part without the prior written consent of Orange
+*
+* Author: Maxime Bélair
+*/
 #include <linux/ptrace.h>
 #include <uapi/linux/bpf.h>
 #include <uapi/linux/ip.h>
@@ -35,8 +45,8 @@ int test_dynamic_call(void* ctx) {
 	//env = bpf_map_lookup_elem(&env_map, &map_id);
 	//if (!env)
 	//	return -ENOMEM;
-	char test[] = "Averylongstringekozfdepozfdefklgpfvedclpgreplzcpfdvfdvfdvf012345678999999999999999999999999999999999999999999999";
-	void* args[] = {(void*)test, (void*) 2};
+//	char test[] = "It works! ;)";
+//	void* args[] = {/*(void*)test, (void*) 2*/};
 
 	/*
 	if(env->name == NULL)
@@ -44,8 +54,9 @@ int test_dynamic_call(void* ctx) {
 	env->name[0] = 'f';
 	env->name[1] = '\0';
 	*/
-	unsigned int fun_ret =  lsmpp_dynamic_call(ctx, 0, 0, args);
-
+	//lsmpp_dynamic_call(ctx, 0, 0, args);
+//	unsigned int fun_ret =  lsmpp_dynamic_call(ctx, 0, 0, args);
+	return 0;
 	/*_dynamic_call(
 			ctx,
 			"test",

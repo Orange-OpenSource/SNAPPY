@@ -1,3 +1,13 @@
+SNAPPY Patch
+============
+
+This repository contains a patched kernel version with SNAPPY.
+
+SNAPPY (Safe Namespaceable And Pro-grammable PolicY) is a new framework that allows even unprivileged processes such as containers to safely and dynamically enforce inthe kernel fine-grained, stackable and programmable eBPF security policies at runtime. SNAPPY is built as a Linux Security Module, leverages a new security-oriented namespace (policy_NS) and eBPF policies enriched with ’dynamic helpers’. This design especially allows to minimize containers’ attack surface. Our design may be applied to any processes but is particularly suitable for container-based use cases
+
+
+The source code of SNAPPY is mainly contained in /security/lsmpp directory
+
 Linux kernel
 ============
 

@@ -3,34 +3,25 @@
 
 #include <linux/module.h>
 #include <linux/lsmpp.h>
+#include <linux/lsmpp_namespace.h>
+
+#include "lsmpp_hooks.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt) "LSM++: " fmt
 
-// By defining these enums this way we can have a dirrect mapping LSM <-> LSMPP
-enum LSM_HOOK_TYPE{
-#define LSMPP_HOOK_INIT(lsmpp, lsm) lsm,
-#include "hooks.h"
-#undef LSMPP_HOOK_INIT
-	LSM_HOOK_TYPE_SIZE,
-};
-enum LSMPP_HOOK_TYPE{
-#define LSMPP_HOOK_INIT(lsmpp, lsm) lsmpp,
-#include "hooks.h"
-#undef LSMPP_HOOK_INIT
-    LSMPP_HOOK_TYPE_SIZE,
-};
 
 
-#define HEADER_SZ 10
-
-
+// todo: remove this redondent type.
 struct mmap_info {
     char *data;
-    uint64_t offset;
+	uint32_t nb_helpers;
+	uint32_t* entrypoints;
+	uint32_t got_offset, got_size;    
     char proto;
     enum LSMPP_HOOK_TYPE hook_type;
     void** args;
+	uint8_t* name;
 };
 
 enum proto {
@@ -41,8 +32,11 @@ enum proto {
 
 struct bpf_helper {
 	void* helper; // TODO: swap to a more explicit type than void*.
-	uint64_t offset;
-	uint64_t size;
+	uint32_t nb_helpers;
+	uint32_t* entrypoints;
+	uint32_t code_size;
+	unsigned char* hash;
+	char* name;
 };
 
 struct bpf_helper_array {
@@ -53,13 +47,13 @@ struct bpf_helper_array {
 // TODO: filp or global variable??
 extern struct bpf_helper_array helper_array;
 
-struct lsmpp_helper_ctx {
+/*struct lsmpp_helper_ctx {
 	int pid;
 	struct nsproxy* nsproxy;
 	struct pid_namespace* pidns;
 	struct list_head list;
 };
-
+*/
 struct lsmpp_hook {
     /*
      * The name of the security hook, a file with this name will be created
@@ -82,7 +76,7 @@ struct lsmpp_hook {
     /*
      * The eBPF programs that are attached to this hook.
      */
-    struct bpf_prog_array __rcu * progs;
+//    struct bpf_prog_array __rcu * progs;
 
     /*
      * The Namespace environment for bpf progs. Required to decide whether the bpf prog has a visibility
@@ -94,7 +88,7 @@ struct lsmpp_hook {
      * synchronize theses structs for coherency.
      * ==> Needs to find a better solution.
      */
-    struct list_head helper_ctx_list;
+//    struct list_head helper_ctx_list;
 };
 
 extern struct lsmpp_hook lsmpp_hook_array[];
@@ -110,6 +104,8 @@ bool lsm_hook_is_init(enum LSMPP_HOOK_TYPE type);
 int lsmpp_load_open (struct inode * i, struct file * f);
 int lsmpp_load_release(struct inode* i, struct file* f);
 ssize_t lsmpp_load_write(struct file* f, const char __user* msg, size_t len, loff_t* offset); 
+
+ssize_t lsmpp_get_helpers(struct file * _, char __user* buf, size_t sz, loff_t* offset);
 
 int lsmpp_run_progs(enum LSMPP_HOOK_TYPE t, struct lsmpp_ctx *ctx) ;
 
@@ -129,8 +125,8 @@ inline void lsmpp_get_ns(enum LSMPP_HOOK_TYPE hook_type, struct linux_binprm* bp
 inline struct bpf_code_array new_bpf_code_array(void); 
 int add_bpf_helper(struct bpf_helper_array* arr, struct bpf_helper code);
 int del_bpf_helper(struct bpf_helper_array* arr, int idx);
-struct bpf_helper_array new_bpf_helper_array(void);
-struct bpf_helper new_bpf_helper(void* tocopy, uint32_t sz, uint32_t offset);
+void __init init_bpf_helpers(void);
+struct bpf_helper new_bpf_helper(struct mmap_info* info, int code_size);
 void debug_print_helpers(struct bpf_helper_array arr);
 
 /*
@@ -150,4 +146,7 @@ struct lsmpp_hook *get_hook_from_fd(int fd);
 
 
 int save_code(struct mmap_info* info, int size);
+#ifdef CONFIG_RANDOMIZE_BASE
+inline unsigned long int get_kaslr_offset(void);
+#endif
 #endif

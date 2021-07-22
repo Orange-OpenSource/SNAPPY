@@ -1,3 +1,14 @@
+/*
+* Software Name : SNAPPY
+* Version: 0.0.1
+* SPDX-FileCopyrightText: Copyright (c) 2021 Orange
+*
+* This software is confidential and proprietary information of Orange.
+* You shall not disclose such Confidential Information and shall not copy, use or distribute it
+* in whole or in part without the prior written consent of Orange
+*
+* Author: Maxime Bélair
+*/
 #include <linux/export.h>
 #include <linux/lsmpp_namespace.h>
 #include <linux/err.h>

@@ -1,4 +1,3 @@
-
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/file.h>
@@ -18,11 +17,11 @@
 #include "lsmpp.h"
 
 
-#define LSMPP_SFS_NAME "lsmpp"
+//#define LSMPP_SFS_NAME "lsmpp"
 
 //extern struct lsmpp_hook lsmpp_hook_array[];
 
-static struct dentry *lsmpp_dir;
+static struct dentry *lsmpp_dir, *lsmpp_policy_dir;
 
 struct lsmpp_hook *get_hook_from_fd(int fd) {
     struct fd f = fdget(fd);
@@ -43,10 +42,10 @@ struct lsmpp_hook *get_hook_from_fd(int fd) {
         goto error;
     }
 
-    if (!is_lsmpp_hook_file(f.file)) {
+    /*if (!is_lsmpp_hook_file(f.file)) {
         ret = -EINVAL;
         goto error;
-    }
+    }*/
 	/*
      * It's wrong to attach the program to the hook
      * if the file is not opened for a write. Note that,
@@ -74,18 +73,19 @@ error:
     fdput(f);
     return ERR_PTR(ret);
 }
+/*
 static void *seq_start(struct seq_file *m, loff_t *pos)
 	__acquires(rcu) {
 	struct lsmpp_hook *h;
 	struct dentry *dentry;
-	struct bpf_prog_array *progs;
+	ruct bpf_prog_array *progs;
 	struct bpf_prog_array_item *item;
 
-	/*
+	 *
 	 * rcu_read_lock() must be held before any return statement
 	 * because the stop() will always be called and thus call
 	 * rcu_read_unlock()
-	 */
+	 *
 	rcu_read_lock();
 
 	dentry = file_dentry(m->file);
@@ -103,7 +103,7 @@ static void *seq_start(struct seq_file *m, loff_t *pos)
 
 	return item;
 }
-
+*//*
 static void *seq_next(struct seq_file *m, void *v, loff_t *pos)
 {
 	struct bpf_prog_array_item *item = v;
@@ -116,7 +116,7 @@ static void *seq_next(struct seq_file *m, void *v, loff_t *pos)
 
 	return item;
 }
-
+*//*
 static void seq_stop(struct seq_file *m, void *v)
 	__releases(rcu)
 {
@@ -130,12 +130,12 @@ static int show_prog(struct seq_file *m, void *v)
 	seq_printf(m, "%s\n", item->prog->aux->name);
 	return 0;
 }
-
+*/
 static const struct seq_operations seq_ops = {
-	.show	= show_prog,
+	/*.show	= show_prog,
 	.start	= seq_start,
 	.next	= seq_next,
-	.stop	= seq_stop,
+	.stop	= seq_stop,*/
 };
 
 static int hook_open(struct inode *inode, struct file *file)
@@ -159,51 +159,22 @@ bool is_lsmpp_hook_file(struct file *f)
 
 void lsmpp_free_hook(struct lsmpp_hook *h)
 {
-	struct bpf_prog_array_item *item;
-	/*
-	 * This function is __init so we are guarranteed that there will be
-	 * no concurrent access.
-	 */
-	struct bpf_prog_array *progs = rcu_dereference_raw(h->progs);
-
-	if (progs) {
-		item = progs->items;
-		while (item->prog) {
-			bpf_prog_put(item->prog);
-			item++;
-		}
-		bpf_prog_array_free(progs);
-	}
-
 	securityfs_remove(h->h_dentry);
 	h->h_dentry = NULL;
 }
 int lsmpp_init_hook(struct lsmpp_hook *h) {
-	struct bpf_prog_array __rcu     *progs;
 	struct dentry *h_dentry;
-	int ret;
 
-	h_dentry = securityfs_create_file(h->name, 0600, lsmpp_dir,
+	h_dentry = securityfs_create_file(h->name, 0777, lsmpp_policy_dir,
 			NULL, &lsmpp_hook_ops);
 
 	if (IS_ERR(h_dentry))
 		return PTR_ERR(h_dentry);
 
 	mutex_init(&h->mutex);
-	progs = bpf_prog_array_alloc(0, GFP_KERNEL);
-	if (!progs) {
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	RCU_INIT_POINTER(h->progs, progs);
 	h_dentry->d_fsdata = h;
 	h->h_dentry = h_dentry;
 	return 0;
-
-error:
-	securityfs_remove(h_dentry);
-	return ret;
 }
 
 static const struct file_operations lsmpp_load_ops = {
@@ -213,13 +184,27 @@ static const struct file_operations lsmpp_load_ops = {
 };
 
 
+static const struct file_operations lsmpp_list_ops = {
+	.read = lsmpp_get_helpers,
+};
+
+/*static const tree_descr lsmpp_files[] = {
+	{"lsmpp_load", 0600, &lsmpp_load_ops},
+	{"list_helpers", 0777, &lsmpp_load_ops},
+};*/
+
 static int __init lsmpp_fs_policy_init(void) {
 	struct dentry* h_dentry = securityfs_create_file("lsmpp_load", 0600, lsmpp_dir, NULL, &lsmpp_load_ops);
-	//proc_create("lsmpp_load", 0, NULL, &lsmpp_load_ops);
 	if(IS_ERR(h_dentry)) {
 		printk(KERN_INFO "ERROR");
 		return PTR_ERR(h_dentry);
 	}
+	h_dentry = securityfs_create_file("list_helpers", 0777, lsmpp_dir, NULL, &lsmpp_list_ops);
+	if(IS_ERR(h_dentry)) {
+		printk(KERN_INFO "ERROR");
+		return PTR_ERR(h_dentry);
+	}
+
 	return 0;
 }
 
@@ -236,6 +221,15 @@ static int __init lsmpp_fs_init(void)
 		lsmpp_dir = NULL;
 		return ret;
 	}
+
+	lsmpp_policy_dir = securityfs_create_dir(LSMPP_POLICIES_DIR_NAME, lsmpp_dir);
+	if (IS_ERR(lsmpp_policy_dir)) {
+		ret = PTR_ERR(lsmpp_policy_dir);
+		pr_err("Unable to create lsmpp sysfs dir: %d\n", ret);
+		lsmpp_policy_dir = NULL;
+		return ret;
+	}
+
 
 	/**
 	 * Setup I/O interaction with LSM++
@@ -256,7 +250,7 @@ static int __init lsmpp_fs_init(void)
 			goto error;
 	}
 	*/
-	lsmpp_fs_initialized = 1;
+	//lsmpp_fs_initialized = 1;
 	return 0;
 /*error:
 	lsmpp_for_each_hook(hook)

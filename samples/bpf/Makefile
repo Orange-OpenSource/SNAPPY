@@ -52,9 +52,9 @@ tprogs-y += xdp_sample_pkts
 tprogs-y += ibumad
 tprogs-y += hbm
 
-#tprogs-y += lsmpp
+tprogs-y += lsmpp_deny
 tprogs-y += lsmpp2
-
+tprogs-y += lsmpp_apply
 
 # Libbpf dependencies
 LIBBPF = $(TOOLS_PATH)/lib/bpf/libbpf.a
@@ -111,8 +111,9 @@ task_fd_query-objs := bpf_load.o task_fd_query_user.o $(TRACE_HELPERS)
 xdp_sample_pkts-objs := xdp_sample_pkts_user.o $(TRACE_HELPERS)
 ibumad-objs := bpf_load.o ibumad_user.o $(TRACE_HELPERS)
 hbm-objs := bpf_load.o hbm.o $(CGROUP_HELPERS)
-#lsmpp-objs := lsmpp_user.o $(TRACE_HELPERS)
+lsmpp_deny-objs := lsmpp_deny_user.o $(TRACE_HELPERS)
 lsmpp2-objs := lsmpp2_user.o $(TRACE_HELPERS)
+lsmpp_apply-objs := lsmpp_apply_user.o
 
 # Tell kbuild to always build the programs
 always := $(tprogs-y)
@@ -174,8 +175,15 @@ always += ibumad_kern.o
 always += hbm_out_kern.o
 always += hbm_edt_kern.o
 always += xdpsock_kern.o
-#always += lsmpp_kern.o
+always += lsmpp_deny_kern.o
+always += lsmpp_CVERunC.o 
+always += lsmpp_eval.o 
+
+always += lsmpp_yama.o
+always += lsmpp_connect.o
 always += lsmpp2_kern.o
+always += lsmpp_apply_user.o
+always += lsmpp_CVE_flatpak.o
 
 ifeq ($(ARCH), arm)
 # Strip all except -D__LINUX_ARM_ARCH__ option needed to handle linux
@@ -195,12 +203,14 @@ TPROGS_CFLAGS += -I$(srctree)/tools/testing/selftests/bpf/
 TPROGS_CFLAGS += -I$(srctree)/tools/lib/
 TPROGS_CFLAGS += -I$(srctree)/tools/include
 TPROGS_CFLAGS += -I$(srctree)/tools/perf
+TPROGS_CFLAGS += -I/etc/lsm
 TPROGS_CFLAGS += -DHAVE_ATTR_TEST=0
 
 ifdef SYSROOT
 TPROGS_CFLAGS += --sysroot=$(SYSROOT)
 TPROGS_LDFLAGS := -L$(SYSROOT)/usr/lib
 endif
+
 
 TPROGCFLAGS_bpf_load.o += -Wno-unused-variable
 
@@ -318,6 +328,7 @@ $(obj)/%.o: $(src)/%.c
 		-Wno-unknown-warning-option $(CLANG_ARCH_ARGS) \
 		-I$(srctree)/samples/bpf/ -include asm_goto_workaround.h \
 		-O2 -emit-llvm -c $< -o -| $(LLC) -march=bpf $(LLC_FLAGS) -filetype=obj -o $@
+
 ifeq ($(DWARF2BTF),y)
 	$(BTF_PAHOLE) -J $@
 endif

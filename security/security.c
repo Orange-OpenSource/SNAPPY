@@ -810,11 +810,11 @@ int security_bprm_set_creds(struct linux_binprm *bprm)
 	return call_int_hook(bprm_set_creds, 0, bprm);
 }
 
-int security_bprm_check(struct linux_binprm *bprm)
+int security_bprm_check(struct linux_binprm *bprm, void** argv,  void** envp)
 {
 	int ret;
 
-	ret = call_int_hook(bprm_check_security, 0, bprm);
+	ret = call_int_hook(bprm_check_security, 0, bprm, argv, envp);
 	if (ret)
 		return ret;
 	return ima_bprm_check(bprm);

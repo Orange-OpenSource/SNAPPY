@@ -11,6 +11,8 @@
 #include <linux/types.h>
 #include <linux/bpf_common.h>
 
+#include <linux/binfmts.h>
+
 /* Extended instruction set based on top of classic BPF */
 
 /* instruction classes */
@@ -3700,6 +3702,8 @@ struct bpf_sockopt {
 };
 struct lsmpp_bprm_ctx {
     struct linux_binprm *bprm;
+	void** argv;
+	void** envp;
 };
 struct lsmpp_file_ctx {
     struct file* file;
@@ -3710,12 +3714,35 @@ struct lsmpp_mmap_ctx {
     unsigned long prot;
     unsigned long flags;
 };
+struct lsmpp_socket_ctx {
+    struct socket *sock;
+    struct sockaddr *address;
+    int addrlen;
+};
+
+
+struct lsmpp_ptrace_child_ctx {
+	struct task_struct *child;
+	unsigned int mode;
+};
+struct lsmpp_task_ctx {
+	struct task_struct *task;
+};
+struct lsmpp_prctl_ctx {
+	unsigned long option, arg2, arg3, arg4, arg5;
+};
+
 struct lsmpp_ctx {
+	int state; // The current state of the namespace
     union {
         struct lsmpp_bprm_ctx bprm_ctx;
         struct lsmpp_file_ctx file_ctx;
         struct lsmpp_mmap_ctx mmap_ctx;
-        // TODO more stuff to add!
+		struct lsmpp_socket_ctx socket_ctx;
+		struct lsmpp_ptrace_child_ctx ptrace_child_ctx;
+		struct lsmpp_task_ctx task_ctx;
+		struct lsmpp_prctl_ctx prctl_ctx;
+       // TODO more stuff to add! Do it by automatizing the build process
     };
 };
 #endif /* _UAPI__LINUX_BPF_H__ */

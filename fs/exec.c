@@ -1629,6 +1629,67 @@ out:
 EXPORT_SYMBOL(remove_arg_zero);
 
 #define printable(c) (((c)=='\t') || ((c)=='\n') || (0x20<=(c) && (c)<=0x7e))
+
+
+// FIXME Added argv and envp arguments to use inside security_bprm_hook
+// TODO Find a better way to get theses arguments without having to write them back
+int search_binary_handler_argv(struct linux_binprm *bprm, 
+		void** argv, void** envp)
+{
+	bool need_retry = IS_ENABLED(CONFIG_MODULES);
+	struct linux_binfmt *fmt;
+	int retval;
+
+	/* This allows 4 levels of binfmt rewrites before failing hard. */
+	if (bprm->recursion_depth > 5)
+		return -ELOOP;
+
+	retval = security_bprm_check(bprm, argv, envp);
+	if (retval)
+		return retval;
+
+	retval = -ENOENT;
+ retry:
+	read_lock(&binfmt_lock);
+	list_for_each_entry(fmt, &formats, lh) {
+		if (!try_module_get(fmt->module))
+			continue;
+		read_unlock(&binfmt_lock);
+
+		bprm->recursion_depth++;
+		retval = fmt->load_binary(bprm);
+		bprm->recursion_depth--;
+
+		read_lock(&binfmt_lock);
+		put_binfmt(fmt);
+		if (retval < 0 && !bprm->mm) {
+			/* we got to flush_old_exec() and failed after it */
+			read_unlock(&binfmt_lock);
+			force_sigsegv(SIGSEGV);
+			return retval;
+		}
+		if (retval != -ENOEXEC || !bprm->file) {
+			read_unlock(&binfmt_lock);
+			return retval;
+		}
+	}
+	read_unlock(&binfmt_lock);
+
+	if (need_retry) {
+		if (printable(bprm->buf[0]) && printable(bprm->buf[1]) &&
+		    printable(bprm->buf[2]) && printable(bprm->buf[3]))
+			return retval;
+		if (request_module("binfmt-%04x", *(ushort *)(bprm->buf + 2)) < 0)
+			return retval;
+		need_retry = false;
+		goto retry;
+	}
+
+	return retval;
+}
+EXPORT_SYMBOL(search_binary_handler_argv);
+
+
 /*
  * cycle the list of binary formats handler, until one recognizes the image
  */
@@ -1642,7 +1703,8 @@ int search_binary_handler(struct linux_binprm *bprm)
 	if (bprm->recursion_depth > 5)
 		return -ELOOP;
 
-	retval = security_bprm_check(bprm);
+	//TODO repair it so it work also for scripts
+	//retval = security_bprm_check(bprm, NULL, NULL); // TODO put good args
 	if (retval)
 		return retval;
 
@@ -1686,8 +1748,10 @@ int search_binary_handler(struct linux_binprm *bprm)
 	return retval;
 }
 EXPORT_SYMBOL(search_binary_handler);
-
-static int exec_binprm(struct linux_binprm *bprm)
+// FIXME Added argv and envp arguments to use inside security_bprm_hook
+// TODO Find a better way to get theses arguments without having to write them back
+static int exec_binprm(struct linux_binprm *bprm,
+		struct user_arg_ptr argv, struct user_arg_ptr envp)
 {
 	pid_t old_pid, old_vpid;
 	int ret;
@@ -1698,7 +1762,7 @@ static int exec_binprm(struct linux_binprm *bprm)
 	old_vpid = task_pid_nr_ns(current, task_active_pid_ns(current->parent));
 	rcu_read_unlock();
 
-	ret = search_binary_handler(bprm);
+	ret = search_binary_handler_argv(bprm, (void**)(void*)argv.ptr.native, (void**)(void*)envp.ptr.native);
 	if (ret >= 0) {
 		audit_bprm(bprm);
 		trace_sched_process_exec(current, old_pid, bprm);
@@ -1818,7 +1882,7 @@ static int __do_execve_file(int fd, struct filename *filename,
 
 	would_dump(bprm, bprm->file);
 
-	retval = exec_binprm(bprm);
+	retval = exec_binprm(bprm, argv, envp);
 	if (retval < 0)
 		goto out;
 

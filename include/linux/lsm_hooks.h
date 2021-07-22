@@ -1485,7 +1485,8 @@ union security_list_options {
 	int (*vm_enough_memory)(struct mm_struct *mm, long pages);
 
 	int (*bprm_set_creds)(struct linux_binprm *bprm);
-	int (*bprm_check_security)(struct linux_binprm *bprm);
+	int (*bprm_check_security)(struct linux_binprm *bprm, 
+		  void** argv, void** envp);
 	void (*bprm_committing_creds)(struct linux_binprm *bprm);
 	void (*bprm_committed_creds)(struct linux_binprm *bprm);
 

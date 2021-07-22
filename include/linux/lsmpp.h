@@ -21,6 +21,7 @@ struct lsmpp_mmap_ctx {
 */
 extern const struct bpf_func_proto lsmpp_dynamic_call_proto;
 /*struct lsmpp_ctx {
+	int state; // The current state of the namespace
     union {
         struct lsmpp_bprm_ctx bprm_ctx;
         struct lsmpp_file_ctx file_ctx;
