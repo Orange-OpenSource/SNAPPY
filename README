@@ -13,6 +13,23 @@ Usage: Compile the kernel and enable SNAPPY in kernel's configuration. You can t
 
 ** NOTE: This code is not ready from production and DOES contain bugs and vulnerabilities that remains to be fixed. DO NOT USE THIS VERSION IN PRODUCTION **
 
+Installation:
+=============
+
+To install this kernel you must enable the following configuration options:
+
+- CONFIG_SECURITYi=y
+- CONFIG_SECURITYFS=y
+- CONFIG_BPF=y
+- CONFIG_BPF_SYSCALL=y
+- CONFIG_LSMPP_NS=y
+- CONFIG_SECURITY_WRITABLE_HOOKS=y
+- CONFIG_SECURITY_LSMPP=y
+- CONFIG_SECURITY_LSMPP_ENFORCE=y
+- CONFIG_SECURITY_LSM="lsmpp,<other_LSMs_to_enable>"
+
+Note: if you dont find, `CONFIG_SECURITY_LSMPP` and `CONFIG_SECURITY_LSMPP_ENFORCE` begin by enabling the other options.
+
 Linux kernel
 ============
 
