@@ -18,7 +18,7 @@ Installation:
 
 To install this kernel you must enable the following configuration options:
 
-- CONFIG_SECURITYi=y
+- CONFIG_SECURITY=y
 - CONFIG_SECURITYFS=y
 - CONFIG_BPF=y
 - CONFIG_BPF_SYSCALL=y
