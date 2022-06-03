@@ -34,9 +34,10 @@ config SECURITY
 
 config SECURITY_WRITABLE_HOOKS
 	depends on SECURITY
-	bool
+	bool "Allow to dynamically add LSM Hooks"
 	default n
-
+	help
+	  This allows to use dynamic hooks. This feature is needed for Snappy
 config SECURITYFS
 	bool "Enable the securityfs filesystem"
 	help
@@ -228,8 +229,10 @@ source "security/yama/Kconfig"
 source "security/safesetid/Kconfig"
 source "security/lockdown/Kconfig"
 source "security/landlock/Kconfig"
+source "security/snappy/Kconfig"
 
 source "security/integrity/Kconfig"
+
 
 choice
 	prompt "First legacy 'major LSM' to be initialized"

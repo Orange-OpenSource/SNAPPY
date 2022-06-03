@@ -26,7 +26,7 @@
 #include <linux/syscalls.h>
 #include <linux/cgroup.h>
 #include <linux/perf_event.h>
-
+#include <linux/snappy_namespace.h>
 static struct kmem_cache *nsproxy_cachep;
 
 struct nsproxy init_nsproxy = {
@@ -46,6 +46,9 @@ struct nsproxy init_nsproxy = {
 #ifdef CONFIG_TIME_NS
 	.time_ns		= &init_time_ns,
 	.time_ns_for_children	= &init_time_ns,
+#endif
+#ifdef CONFIG_SNAPPY_NS
+	.snappy_ns 		= &init_snappy_ns,
 #endif
 };
 
@@ -121,8 +124,16 @@ static struct nsproxy *create_new_namespaces(unsigned long flags,
 	}
 	new_nsp->time_ns = get_time_ns(tsk->nsproxy->time_ns);
 
+	new_nsp->snappy_ns = copy_snappy_ns(flags, user_ns, tsk->nsproxy->snappy_ns);
+	if (IS_ERR(new_nsp->snappy_ns)) {
+		err = PTR_ERR(new_nsp->snappy_ns);
+		goto out_snappy;
+	}
+	
 	return new_nsp;
-
+out_snappy:
+	if (new_nsp->snappy_ns)
+		put_snappy_ns(new_nsp->snappy_ns);
 out_time:
 	put_net(new_nsp->net_ns);
 out_net:
@@ -141,7 +152,9 @@ out_uts:
 		put_mnt_ns(new_nsp->mnt_ns);
 out_ns:
 	kmem_cache_free(nsproxy_cachep, new_nsp);
+
 	return ERR_PTR(err);
+
 }
 
 /*
@@ -156,12 +169,14 @@ int copy_namespaces(unsigned long flags, struct task_struct *tsk)
 
 	if (likely(!(flags & (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
 			      CLONE_NEWPID | CLONE_NEWNET |
-			      CLONE_NEWCGROUP | CLONE_NEWTIME)))) {
+			      CLONE_NEWCGROUP | CLONE_NEWTIME | CLONE_NEWSNAPPY)))) {
 		if (likely(old_ns->time_ns_for_children == old_ns->time_ns)) {
 			get_nsproxy(old_ns);
 			return 0;
 		}
-	} else if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+	} else if (!ns_capable(user_ns, CAP_SYS_ADMIN) && (flags & 
+				(CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
+				CLONE_NEWPID | CLONE_NEWNET | CLONE_NEWCGROUP)))
 		return -EPERM;
 
 	/*
@@ -199,6 +214,8 @@ void free_nsproxy(struct nsproxy *ns)
 		put_time_ns(ns->time_ns);
 	if (ns->time_ns_for_children)
 		put_time_ns(ns->time_ns_for_children);
+	if(ns->snappy_ns)
+		put_snappy_ns(ns->snappy_ns);
 	put_cgroup_ns(ns->cgroup_ns);
 	put_net(ns->net_ns);
 	kmem_cache_free(nsproxy_cachep, ns);
@@ -216,11 +233,13 @@ int unshare_nsproxy_namespaces(unsigned long unshare_flags,
 
 	if (!(unshare_flags & (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
 			       CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWCGROUP |
-			       CLONE_NEWTIME)))
+			       CLONE_NEWTIME | CLONE_NEWSNAPPY)))
 		return 0;
 
 	user_ns = new_cred ? new_cred->user_ns : current_user_ns();
-	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
+	if (!ns_capable(user_ns, CAP_SYS_ADMIN) && (unshare_flags &
+                		(CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
+        	        	CLONE_NEWPID | CLONE_NEWNET | CLONE_NEWCGROUP)))	
 		return -EPERM;
 
 	*new_nsp = create_new_namespaces(unshare_flags, current, user_ns,

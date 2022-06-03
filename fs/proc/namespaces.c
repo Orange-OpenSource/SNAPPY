@@ -37,6 +37,9 @@ static const struct proc_ns_operations *ns_entries[] = {
 	&timens_operations,
 	&timens_for_children_operations,
 #endif
+#ifdef CONFIG_SNAPPY_NS
+	&snappyns_operations,
+#endif
 };
 
 static const char *proc_ns_get_link(struct dentry *dentry,

@@ -1246,7 +1246,13 @@ config NET_NS
 	help
 	  Allow user space to create what appear to be multiple instances
 	  of the network stack.
-
+config SNAPPY_NS
+	bool "Snappy Namespace"
+	default y
+	help
+		Allows to define perimeters for Snappy security policies.
+		With that feature security can be tuned to match the NS security needs.
+		This is especially useful for containers.
 endif # NAMESPACES
 
 config CHECKPOINT_RESTORE

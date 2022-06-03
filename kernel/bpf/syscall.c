@@ -32,6 +32,8 @@
 #include <linux/rcupdate_trace.h>
 #include <linux/memcontrol.h>
 
+#include <linux/snappy.h>
+
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_CGROUP_ARRAY || \
 			  (map)->map_type == BPF_MAP_TYPE_ARRAY_OF_MAPS)
@@ -2239,6 +2241,7 @@ static int bpf_prog_load(union bpf_attr *attr, bpfptr_t uattr)
 		return -E2BIG;
 	if (type != BPF_PROG_TYPE_SOCKET_FILTER &&
 	    type != BPF_PROG_TYPE_CGROUP_SKB &&
+	    type != BPF_PROG_TYPE_SNAPPY &&
 	    !bpf_capable())
 		return -EPERM;
 
@@ -3179,6 +3182,8 @@ attach_type_to_prog_type(enum bpf_attach_type attach_type)
 		return BPF_PROG_TYPE_SK_LOOKUP;
 	case BPF_XDP:
 		return BPF_PROG_TYPE_XDP;
+	case BPF_SNAPPY:
+		return BPF_PROG_TYPE_SNAPPY;
 	default:
 		return BPF_PROG_TYPE_UNSPEC;
 	}
@@ -3233,6 +3238,9 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	case BPF_PROG_TYPE_CGROUP_SYSCTL:
 	case BPF_PROG_TYPE_SOCK_OPS:
 		ret = cgroup_bpf_prog_attach(attr, ptype, prog);
+		break;
+	case BPF_PROG_TYPE_SNAPPY:
+		ret = snappy_prog_attach(attr, prog);
 		break;
 	default:
 		ret = -EINVAL;
@@ -4032,7 +4040,7 @@ static int bpf_btf_load(const union bpf_attr *attr, bpfptr_t uattr)
 	if (CHECK_ATTR(BPF_BTF_LOAD))
 		return -EINVAL;
 
-	if (!bpf_capable())
+	if (sysctl_unprivileged_bpf_disabled  && !bpf_capable()) // TODO: can we do w/o this hack?
 		return -EPERM;
 
 	return btf_new_fd(attr, uattr);

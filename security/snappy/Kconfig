@@ -1,0 +1,24 @@
+config SECURITY_SNAPPY
+        bool "Linux Security Module ++"
+        depends on SECURITY
+        depends on SECURITYFS
+        depends on BPF
+        depends on BPF_SYSCALL
+		depends on SNAPPY_NS
+        select SECURITY_WRITABLE_HOOKS
+        help
+          This selects the Linux Security++ Framework which allows to execute
+          eBPF programs dynamically in LSM hooks. These bpf programs can access
+          helpers that can be dynamically added by the administrator. Thus, the
+          security is more flexible and powerful than with the classical LSM
+          architecture.
+
+          If you are unsure how to answer this question, answer N.
+config SECURITY_SNAPPY_ENFORCE
+        bool "Deny operations based on the evaluation of the attached programs"
+        depends on SECURITY_SNAPPY
+        help
+          eBPF programs attached to hooks can be used for both auditing and
+          enforcement. Enabling enforcement implies that the evaluation result
+          from the attached eBPF programs will allow and deny the operation
+          guarded by the security hook.

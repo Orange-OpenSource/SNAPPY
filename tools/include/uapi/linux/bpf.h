@@ -11,6 +11,8 @@
 #include <linux/types.h>
 #include <linux/bpf_common.h>
 
+#include <linux/binfmts.h>
+
 /* Extended instruction set based on top of classic BPF */
 
 /* instruction classes */
@@ -950,6 +952,7 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_LSM,
 	BPF_PROG_TYPE_SK_LOOKUP,
 	BPF_PROG_TYPE_SYSCALL, /* a program that can execute syscalls */
+	BPF_PROG_TYPE_SNAPPY,
 };
 
 enum bpf_attach_type {
@@ -995,6 +998,7 @@ enum bpf_attach_type {
 	BPF_SK_REUSEPORT_SELECT,
 	BPF_SK_REUSEPORT_SELECT_OR_MIGRATE,
 	BPF_PERF_EVENT,
+	BPF_SNAPPY,
 	__MAX_BPF_ATTACH_TYPE
 };
 
@@ -4938,6 +4942,13 @@ union bpf_attr {
  *		**-ENOENT** if symbol is not found.
  *
  *		**-EPERM** if caller does not have permission to obtain kernel address.
+ * int snappy_dynamic_call(struct snappy_ctx *ctx, int lib_id, u16 fun_id, void **args)
+ *	Description
+ *		This helper can be used to run a BPF_PROG_SNAPPY programs
+ *		The helpers allows to execute a function from a dynamically built helper,
+ *		built by the administrator
+ *	Return
+ *		The return value of the helper is directly the result code of the helper
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -5120,7 +5131,8 @@ union bpf_attr {
 	FN(trace_vprintk),		\
 	FN(skc_to_unix_sock),		\
 	FN(kallsyms_lookup_name),	\
-	/* */
+	FN(snappy_dynamic_call),	\
+ 	/* */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
  * function eBPF program intends to call
@@ -6326,6 +6338,52 @@ enum {
 	BTF_F_NONAME	=	(1ULL << 1),
 	BTF_F_PTR_RAW	=	(1ULL << 2),
 	BTF_F_ZERO	=	(1ULL << 3),
+};
+
+struct snappy_bprm_ctx {
+    struct linux_binprm *bprm;
+	void** argv;
+	void** envp;
+};
+struct snappy_file_ctx {
+    struct file* file;
+};
+struct snappy_mmap_ctx {
+    struct file* file;
+    unsigned long reqprot;
+    unsigned long prot;
+    unsigned long flags;
+};
+struct snappy_socket_ctx {
+    struct socket *sock;
+    struct sockaddr *address;
+    int addrlen;
+};
+
+
+struct snappy_ptrace_child_ctx {
+	struct task_struct *child;
+	unsigned int mode;
+};
+struct snappy_task_ctx {
+	struct task_struct *task;
+};
+struct snappy_prctl_ctx {
+	unsigned long option, arg2, arg3, arg4, arg5;
+};
+ 
+struct snappy_ctx {
+	int state; // The current state of the namespace
+    union {
+        struct snappy_bprm_ctx bprm_ctx;
+        struct snappy_file_ctx file_ctx;
+        struct snappy_mmap_ctx mmap_ctx;
+		struct snappy_socket_ctx socket_ctx;
+		struct snappy_ptrace_child_ctx ptrace_child_ctx;
+		struct snappy_task_ctx task_ctx;
+		struct snappy_prctl_ctx prctl_ctx;
+       // TODO more stuff to add! Do it by automatizing the build process
+    };
 };
 
 #endif /* _UAPI__LINUX_BPF_H__ */

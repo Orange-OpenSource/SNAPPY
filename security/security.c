@@ -497,6 +497,40 @@ void __init security_add_hooks(struct security_hook_list *hooks, int count,
 	}
 }
 
+/**
+ * security_late_add_hooks - Add a module hook to the hook list after initialization. If you add all your hooks during your __init phase, you should use security_add_hooks instead.
+ * @hooks the hooks to add
+ * @count: the number of hooks to add
+ * @lsm: the name of the security module
+ *
+ * Each LSM has to register its hooks with the infrastructure.
+
+ */
+void security_late_add_hooks(struct security_hook_list* hooks, int count, char *lsm)
+{
+    int i;
+    char* match=NULL;
+    /* We check that our LSM is already in the list */
+    while((match = strstr(lsm_names, lsm))) {
+        if(match > lsm_names) { // If the match is not the first LSM it must be preceded by ','
+            if(match[-1] != ','){
+                match=NULL; // This was not the beginning of the LSM. Let's retry
+                continue;
+            }
+            if(match[strlen(lsm)] == ',' || match[strlen(lsm)] == '\0')
+                break; //We found our lsm
+        }
+    }
+    if(match == NULL) {
+        printk(KERN_ERR "Trying to add hooks to the inexistant lsm %s", lsm);
+        return;
+    }
+    for(i = 0; i < count; i++) {
+        hooks[i].lsm = lsm;
+        hlist_add_tail_rcu(&hooks[i].list, hooks[i].head);
+    }
+}
+
 int call_blocking_lsm_notifier(enum lsm_event event, void *data)
 {
 	return blocking_notifier_call_chain(&blocking_lsm_notifier_chain,
@@ -859,11 +893,11 @@ int security_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file)
 	return call_int_hook(bprm_creds_from_file, 0, bprm, file);
 }
 
-int security_bprm_check(struct linux_binprm *bprm)
+int security_bprm_check(struct linux_binprm *bprm, void**argv, void** envp)
 {
 	int ret;
 
-	ret = call_int_hook(bprm_check_security, 0, bprm);
+	ret = call_int_hook(bprm_check_security, 0, bprm, argv, envp);
 	if (ret)
 		return ret;
 	return ima_bprm_check(bprm);

@@ -32,6 +32,8 @@
 #include <linux/string.h>
 #include <linux/mm.h>
 
+#include <linux/binfmts.h>
+
 struct linux_binprm;
 struct cred;
 struct rlimit;
@@ -286,7 +288,7 @@ int security_settime64(const struct timespec64 *ts, const struct timezone *tz);
 int security_vm_enough_memory_mm(struct mm_struct *mm, long pages);
 int security_bprm_creds_for_exec(struct linux_binprm *bprm);
 int security_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file);
-int security_bprm_check(struct linux_binprm *bprm);
+int security_bprm_check(struct linux_binprm *bprm, void** argv, void** envp);
 void security_bprm_committing_creds(struct linux_binprm *bprm);
 void security_bprm_committed_creds(struct linux_binprm *bprm);
 int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc);
@@ -607,7 +609,7 @@ static inline int security_bprm_creds_from_file(struct linux_binprm *bprm,
 	return cap_bprm_creds_from_file(bprm, file);
 }
 
-static inline int security_bprm_check(struct linux_binprm *bprm)
+static inline int ecurity_bprm_check(struct linux_binprm *bprm, void** argv, void** envp)
 {
 	return 0;
 }

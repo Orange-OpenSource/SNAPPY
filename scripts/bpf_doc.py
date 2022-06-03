@@ -549,6 +549,7 @@ class PrinterHelpers(Printer):
             'struct socket',
             'struct file',
             'struct bpf_timer',
+            'struct snappy_ctx',
     ]
     known_types = {
             '...',
@@ -598,6 +599,7 @@ class PrinterHelpers(Printer):
             'struct socket',
             'struct file',
             'struct bpf_timer',
+            'struct snappy_ctx',
     }
     mapped_types = {
             'u8': '__u8',

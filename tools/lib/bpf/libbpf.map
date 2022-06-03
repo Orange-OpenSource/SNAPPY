@@ -72,6 +72,7 @@ LIBBPF_0.0.1 {
 		bpf_program__is_raw_tracepoint;
 		bpf_program__is_sched_act;
 		bpf_program__is_sched_cls;
+		bpf_program__is_snappy;
 		bpf_program__is_socket_filter;
 		bpf_program__is_tracepoint;
 		bpf_program__is_xdp;
@@ -91,6 +92,7 @@ LIBBPF_0.0.1 {
 		bpf_program__set_raw_tracepoint;
 		bpf_program__set_sched_act;
 		bpf_program__set_sched_cls;
+		bpf_program__set_snappy;
 		bpf_program__set_socket_filter;
 		bpf_program__set_tracepoint;
 		bpf_program__set_type;

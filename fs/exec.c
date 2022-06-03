@@ -1708,7 +1708,8 @@ static int search_binary_handler(struct linux_binprm *bprm)
 	if (retval < 0)
 		return retval;
 
-	retval = security_bprm_check(bprm);
+	//TODO repair it so it work also for scripts
+	//retval = security_bprm_check(bprm, NULL, NULL); // TODO put good args
 	if (retval)
 		return retval;
 
@@ -1744,7 +1745,63 @@ static int search_binary_handler(struct linux_binprm *bprm)
 	return retval;
 }
 
-static int exec_binprm(struct linux_binprm *bprm)
+// FIXME Added argv and envp arguments to use inside security_bprm_hook
+// TODO Find a better way to get theses arguments without having to write them back
+int search_binary_handler_argv(struct linux_binprm *bprm, 
+		void** argv, void** envp)
+{
+	bool need_retry = IS_ENABLED(CONFIG_MODULES);
+	struct linux_binfmt *fmt;
+	int retval;
+
+	retval = prepare_binprm(bprm);
+	if (retval < 0)
+		return retval;
+
+	retval = security_bprm_check(bprm, argv, envp);
+	if (retval)
+		return retval;
+
+	retval = -ENOENT;
+ retry:
+	read_lock(&binfmt_lock);
+	list_for_each_entry(fmt, &formats, lh) {
+		if (!try_module_get(fmt->module))
+			continue;
+		read_unlock(&binfmt_lock);
+
+		retval = fmt->load_binary(bprm);
+
+		read_lock(&binfmt_lock);
+		put_binfmt(fmt);
+		if (bprm->point_of_no_return || (retval != -ENOEXEC)) {
+			read_unlock(&binfmt_lock);
+			return retval;
+		}
+	}
+	read_unlock(&binfmt_lock);
+
+	if (need_retry) {
+		if (printable(bprm->buf[0]) && printable(bprm->buf[1]) &&
+		    printable(bprm->buf[2]) && printable(bprm->buf[3]))
+			return retval;
+		if (request_module("binfmt-%04x", *(ushort *)(bprm->buf + 2)) < 0)
+			return retval;
+		need_retry = false;
+		goto retry;
+	}
+
+	return retval;
+
+}
+EXPORT_SYMBOL(search_binary_handler_argv);
+
+
+
+// FIXME Added argv and envp arguments to use inside security_bprm_hook
+// TODO Find a better way to get theses arguments without having to write them back
+static int exec_binprm(struct linux_binprm *bprm,
+		struct user_arg_ptr argv, struct user_arg_ptr envp)
 {
 	pid_t old_pid, old_vpid;
 	int ret, depth;
@@ -1761,7 +1818,7 @@ static int exec_binprm(struct linux_binprm *bprm)
 		if (depth > 5)
 			return -ELOOP;
 
-		ret = search_binary_handler(bprm);
+		ret = search_binary_handler_argv(bprm, (void**)(void*)argv.ptr.native, (void**)(void*)envp.ptr.native);
 		if (ret < 0)
 			return ret;
 		if (!bprm->interpreter)
@@ -1793,7 +1850,8 @@ static int exec_binprm(struct linux_binprm *bprm)
  * sys_execve() executes a new program.
  */
 static int bprm_execve(struct linux_binprm *bprm,
-		       int fd, struct filename *filename, int flags)
+		       int fd, struct filename *filename, int flags,
+		       struct user_arg_ptr argv, struct user_arg_ptr envp)
 {
 	struct file *file;
 	int retval;
@@ -1830,7 +1888,7 @@ static int bprm_execve(struct linux_binprm *bprm,
 	if (retval)
 		goto out;
 
-	retval = exec_binprm(bprm);
+	retval = exec_binprm(bprm, argv, envp);
 	if (retval < 0)
 		goto out;
 
@@ -1919,7 +1977,7 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out_free;
 
-	retval = bprm_execve(bprm, fd, filename, flags);
+	retval = bprm_execve(bprm, fd, filename, flags, argv, envp);
 out_free:
 	free_bprm(bprm);
 
@@ -1935,6 +1993,9 @@ int kernel_execve(const char *kernel_filename,
 	struct linux_binprm *bprm;
 	int fd = AT_FDCWD;
 	int retval;
+
+	struct user_arg_ptr __argv = { .ptr.native = argv };
+	struct user_arg_ptr __envp = { .ptr.native = envp };
 
 	filename = getname_kernel(kernel_filename);
 	if (IS_ERR(filename))
@@ -1973,7 +2034,7 @@ int kernel_execve(const char *kernel_filename,
 	if (retval < 0)
 		goto out_free;
 
-	retval = bprm_execve(bprm, fd, filename, 0);
+	retval = bprm_execve(bprm, fd, filename, 0, __argv, __envp);
 out_free:
 	free_bprm(bprm);
 out_ret:

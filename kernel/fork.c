@@ -1997,7 +1997,11 @@ static __latent_entropy struct task_struct *copy_process(
 		 *   reuse it later for CLONE_PIDFD.
 		 * - CLONE_THREAD is blocked until someone really needs it.
 		 */
-		if (clone_flags & (CLONE_DETACHED | CLONE_THREAD))
+		if (clone_flags & (
+#ifndef CONFIG_SNAPPY_NS //CLONE_DETACHED is disabled when SNAPPY_NS is enabled.
+						CLONE_DETACHED | 
+#endif
+						CLONE_THREAD))
 			return ERR_PTR(-EINVAL);
 	}
 
@@ -2810,7 +2814,11 @@ static bool clone3_args_valid(struct kernel_clone_args *kargs)
 	 * - make the CLONE_DETACHED bit reusable for clone3
 	 * - make the CSIGNAL bits reusable for clone3
 	 */
-	if (kargs->flags & (CLONE_DETACHED | CSIGNAL))
+	if (kargs->flags & (
+#ifndef CONFIG_SNAPPY_NS //CLONE_DETACHED is disabled when SNAPPY_NS is enabled.
+						CLONE_DETACHED | 
+#endif
+						CSIGNAL))
 		return false;
 
 	if ((kargs->flags & (CLONE_SIGHAND | CLONE_CLEAR_SIGHAND)) ==
@@ -2950,7 +2958,7 @@ static int check_unshare_flags(unsigned long unshare_flags)
 				CLONE_VM|CLONE_FILES|CLONE_SYSVSEM|
 				CLONE_NEWUTS|CLONE_NEWIPC|CLONE_NEWNET|
 				CLONE_NEWUSER|CLONE_NEWPID|CLONE_NEWCGROUP|
-				CLONE_NEWTIME))
+				CLONE_NEWTIME|CLONE_NEWSNAPPY))
 		return -EINVAL;
 	/*
 	 * Not implemented, but pretend it works if there is nothing

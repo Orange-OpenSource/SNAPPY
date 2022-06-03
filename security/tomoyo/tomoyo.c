@@ -88,7 +88,7 @@ static int tomoyo_bprm_creds_for_exec(struct linux_binprm *bprm)
  *
  * Returns 0 on success, negative value otherwise.
  */
-static int tomoyo_bprm_check_security(struct linux_binprm *bprm)
+static int tomoyo_bprm_check_security(struct linux_binprm *bprm, void **argv, void** envp)
 {
 	struct tomoyo_task *s = tomoyo_task(current);
 
