@@ -1,3 +1,36 @@
+SNAPPY Patch
+============
+
+This repository contains a patched kernel version with SNAPPY.
+
+SNAPPY (Safe Namespaceable And Pro-grammable PolicY) is a new framework that allows even unprivileged processes such as containers to safely and dynamically enforce inthe kernel fine-grained, stackable and programmable eBPF security policies at runtime. SNAPPY is built as a Linux Security Module, leverages a new security-oriented namespace (policy_NS) and eBPF policies enriched with ’dynamic helpers’. This design especially allows to minimize containers’ attack surface. Our design may be applied to any processes but is particularly suitable for container-based use cases
+
+You can find more information about SNAPPY in the assoricated research article : " SNAPPY: Programmable Kernel-Level Policies for Containers, Belair, Maxime and Laniepce, Sylvie and Menaud, Jean-Marc, SAC 2021 : 36th ACM/SIGAPP Symposium On Applied Computing, https://doi.org/10.1145/3412841.3442037 "
+
+The source code of SNAPPY is mainly contained in /security/snappy directory
+
+Usage: Compile the kernel and enable SNAPPY in kernel's configuration. You can then load security policies (see examples in samples/bpf/)
+
+** NOTE: This code is not ready from production and DOES contain bugs and vulnerabilities that remains to be fixed. DO NOT USE THIS VERSION IN PRODUCTION **
+
+Installation:
+=============
+
+To install this kernel you must enable the following configuration options:
+
+- CONFIG_SECURITY=y
+- CONFIG_SECURITYFS=y
+- CONFIG_BPF=y
+- CONFIG_BPF_SYSCALL=y
+- CONFIG_SNAPPY_NS=y
+- CONFIG_SECURITY_WRITABLE_HOOKS=y
+- CONFIG_SECURITY_SNAPPY=y
+- CONFIG_SECURITY_SNAPPY_ENFORCE=y
+- CONFIG_SECURITY_LSM="snappy,<other_LSMs_to_enable>"
+
+Note: if you dont find, `CONFIG_SECURITY_SNAPPY` and `CONFIG_SECURITY_SNAPPY_ENFORCE` begin by enabling the other options.
+
+
 Linux kernel
 ============
 

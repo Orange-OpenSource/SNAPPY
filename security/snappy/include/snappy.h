@@ -117,6 +117,10 @@ ssize_t snappy_load_write(struct file* f, const char __user* msg, size_t len, lo
 
 ssize_t snappy_get_helpers(struct file * _, char __user* buf, size_t sz, loff_t* offset);
 
+int snappy_hook_open (struct inode * i, struct file * f);
+ssize_t snappy_get_bpf(struct file * f, char __user* buf, size_t sz, loff_t* offset); 
+ssize_t snappy_remove_bpf(struct file* f, const char __user* msg, size_t len, loff_t* offset); 
+
 int snappy_run_progs(enum SNAPPY_HOOK_TYPE t, struct snappy_ctx *ctx) ;
 
 /* Implemented in libdb.c */

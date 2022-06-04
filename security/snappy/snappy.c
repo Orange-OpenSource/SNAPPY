@@ -146,6 +146,99 @@ ssize_t snappy_get_helpers(struct file * _, char __user* buf, size_t sz, loff_t*
 	return copied;
 }
 
+
+int snappy_hook_open (struct inode * i, struct file * f) {
+	f->private_data = i->i_private;
+	return 0;
+}
+
+// TODO also get the hierarchy of NS and write the results in buf, like a normal human being.
+ssize_t snappy_get_bpf(struct file * f, char __user* buf, size_t sz, loff_t* offset) {  
+	struct bpf_prog_array* arr;
+	struct bpf_prog* prog;
+	struct bpf_prog_array_item* item;
+	int copied=0, err;
+	int namesz;
+	int hook_id = *(int*)f->private_data;
+	int toskip = *offset;
+	struct snappy_namespace* ns;
+
+	ns = current->nsproxy->snappy_ns;
+	do {
+		arr = ns->progs[hook_id]; // todo add RCU lock
+		if(!arr)
+			continue;
+
+		for (item = arr->items; item->prog; item++) {
+			if (bpf_prog_is_dummy(item->prog))
+				continue;
+			if(toskip>0) {
+				toskip--;
+				continue;
+			}
+			prog = item->prog;	
+
+
+			err = copy_to_user(buf + copied, &(ns->ns.inum) , sizeof(u32));
+			copied += sizeof(u32);
+			err += copy_to_user(buf + copied, (u64*)&(prog->type), sizeof(u32));
+			copied += sizeof(u32);	
+			err = copy_to_user(buf + copied, (u64*)prog->tag, sizeof(u64));
+			copied += sizeof(u64);
+			namesz = strlen(prog->aux->name) + 1;
+			err += copy_to_user(buf + copied, prog->aux->name, namesz);
+			copied += namesz;
+			if(prog->aux->attach_func_name) {
+				namesz = strlen(prog->aux->attach_func_name) + 1;
+				err += copy_to_user(buf + copied, prog->aux->name, namesz);
+				copied += namesz;
+			}
+			else {
+				err += copy_to_user(buf + copied, "\0", 1);
+				copied += 1;
+
+			}
+
+			if(err) {
+				pr_err("Failed to send data");
+				return -EINVAL;
+			}
+			
+			++*offset;
+//			pr_err("Prog tag = %llu type = %d\n" , *((u64*)prog->tag) ,prog->type); // tag is 64-bit
+		}
+	}
+	while((ns = ns->parent));
+	return copied;
+}
+ssize_t snappy_remove_bpf(struct file* f, const char __user* msg, size_t sz, loff_t* offset) {
+	struct bpf_prog_array* arr;
+	int hook_id = *(int*)f->private_data;
+	int prog_id;
+
+
+	if(*offset) /* We remove a single program */
+		return 0;
+
+	if(get_user(prog_id, msg) || prog_id < 0)
+		return -EINVAL;
+	
+	/* Only the sysadmin can remove bpf progs */
+	if(!capable(CAP_SYS_ADMIN))
+	       return -EPERM;
+	arr =  current->nsproxy->snappy_ns->progs[hook_id]; // todo add RCU locks
+	if(!arr)
+		return -EINVAL;
+
+
+	if(bpf_prog_array_delete_put_at(arr, prog_id))
+		return -ENOENT;
+	++*offset;
+
+	return sz;
+
+
+}
 int save_code(struct mmap_info* info, int code_size) {
     // TODO Check rights to check on a lsm.
     struct bpf_helper h;

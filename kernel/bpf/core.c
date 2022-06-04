@@ -1967,6 +1967,10 @@ static struct bpf_prog_dummy {
 	},
 };
 
+bool bpf_prog_is_dummy(struct bpf_prog* prog) {
+	return prog == &dummy_bpf_prog.prog;
+}
+
 /* to avoid allocating empty bpf_prog_array for cgroups that
  * don't have bpf program attached use one global 'empty_prog_array'
  * It will not be modified the caller of bpf_prog_array_alloc()
@@ -2004,7 +2008,7 @@ int bpf_prog_array_length(struct bpf_prog_array *array)
 	u32 cnt = 0;
 
 	for (item = array->items; item->prog; item++)
-		if (item->prog != &dummy_bpf_prog.prog)
+		if (!bpf_prog_is_dummy(item->prog))
 			cnt++;
 	return cnt;
 }
@@ -2014,7 +2018,7 @@ bool bpf_prog_array_is_empty(struct bpf_prog_array *array)
 	struct bpf_prog_array_item *item;
 
 	for (item = array->items; item->prog; item++)
-		if (item->prog != &dummy_bpf_prog.prog)
+		if (!bpf_prog_is_dummy(item->prog))
 			return false;
 	return true;
 }
@@ -2027,7 +2031,7 @@ static bool bpf_prog_array_copy_core(struct bpf_prog_array *array,
 	int i = 0;
 
 	for (item = array->items; item->prog; item++) {
-		if (item->prog == &dummy_bpf_prog.prog)
+		if (bpf_prog_is_dummy(item->prog))
 			continue;
 		prog_ids[i] = item->prog->aux->id;
 		if (++i == request_cnt) {
@@ -2078,6 +2082,44 @@ void bpf_prog_array_delete_safe(struct bpf_prog_array *array,
 }
 
 /**
+ * bpf_prog_array_delete_put_at()  - Replaces the program at the given
+ *                                   index into the program array with
+ *                                   a dummy no-op program, and put the
+ *                                   old program
+ * @array: a bpf_prog_array
+ * @index: the index of the program to replace
+ *
+ * Skips over dummy programs, by not counting them, when calculating
+ * the position of the program to replace.
+ *
+ * Return:
+ * * 0		- Success
+ * * -EINVAL	- Invalid index value. Must be a non-negative integer.
+ * * -ENOENT	- Index out of range
+ */
+int bpf_prog_array_delete_put_at(struct bpf_prog_array *array, int index)
+{
+	struct bpf_prog_array_item *item;
+	struct bpf_prog* old;
+	if (unlikely(index < 0))
+		return -EINVAL;
+
+	for (item = array->items; item->prog; item++) {
+		if (bpf_prog_is_dummy(item->prog))
+			continue;
+		if (!index) {
+			old=item->prog;
+			WRITE_ONCE(item->prog, &dummy_bpf_prog.prog);
+			bpf_prog_put(old);
+			return 0;
+		}
+		index--;
+	}
+	return -ENOENT;
+
+}
+
+/**
  * bpf_prog_array_delete_safe_at() - Replaces the program at the given
  *                                   index into the program array with
  *                                   a dummy no-op program.
@@ -2121,7 +2163,7 @@ int bpf_prog_array_update_at(struct bpf_prog_array *array, int index,
 		return -EINVAL;
 
 	for (item = array->items; item->prog; item++) {
-		if (item->prog == &dummy_bpf_prog.prog)
+		if (bpf_prog_is_dummy(item->prog))
 			continue;
 		if (!index) {
 			WRITE_ONCE(item->prog, prog);
@@ -2153,7 +2195,7 @@ int bpf_prog_array_copy(struct bpf_prog_array *old_array,
 				found_exclude = true;
 				continue;
 			}
-			if (existing->prog != &dummy_bpf_prog.prog)
+			if (!bpf_prog_is_dummy(existing->prog))
 				carry_prog_cnt++;
 			if (existing->prog == include_prog)
 				return -EEXIST;
@@ -2185,7 +2227,7 @@ int bpf_prog_array_copy(struct bpf_prog_array *old_array,
 		existing = old_array->items;
 		for (; existing->prog; existing++) {
 			if (existing->prog == exclude_prog ||
-			    existing->prog == &dummy_bpf_prog.prog)
+			    bpf_prog_is_dummy(existing->prog))
 				continue;
 
 			new->prog = existing->prog;

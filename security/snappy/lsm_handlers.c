@@ -130,27 +130,29 @@ bool is_visible(struct pid_namespace* pid_ns, int policy_pid, struct task_struct
 */
 // TODO: Work this RCU thing out
 int snappy_run_progs(enum SNAPPY_HOOK_TYPE t, struct snappy_ctx *ctx) {
-    struct bpf_prog_array_item *item;
-    struct bpf_prog *prog;
-    int ret, retval = 0;
-    //struct list_head* list_it;
+	struct bpf_prog_array_item *item;
+	struct bpf_prog *prog;
+	int ret, retval = 0;
+	//struct list_head* list_it;
 	struct snappy_namespace* ns;
 	
 	get_snappy_ns(current->nsproxy->snappy_ns);
 	ns = current->nsproxy->snappy_ns;
-    preempt_disable();
-    rcu_read_lock();
+	preempt_disable();
+	rcu_read_lock();
 	do {
 		if(!ns->progs[t])
 			continue;
-    	item = rcu_dereference(ns->progs[t])->items;
+	    	item = rcu_dereference(ns->progs[t])->items;
 		while((prog = READ_ONCE(item->prog))) {
-			ctx->state = ns->state; // setup state.
-			ret =bpf_prog_run(prog, ctx);
-			ns->state = ctx->state; // upate state
-			if(ret != 0) {
-				retval = ret;
-				goto out;
+			if(!bpf_prog_is_dummy(item->prog)) {
+				ctx->state = ns->state; // setup state.
+				ret = bpf_prog_run(prog, ctx);
+				ns->state = ctx->state; // upate state
+				if(ret != 0) {
+					retval = ret;
+					goto out;
+				}
 			}
 			++item;
 		}

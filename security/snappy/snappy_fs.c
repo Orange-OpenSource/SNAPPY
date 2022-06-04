@@ -148,16 +148,18 @@ static const struct seq_operations seq_ops = {
 	.stop	= seq_stop,*/
 };
 
-static int hook_open(struct inode *inode, struct file *file)
-{
-	return seq_open(file, &seq_ops);
-}
+//static int hook_open(struct inode *inode, struct file *file)
+//{
+//	return seq_open(file, &seq_ops);
+//}
 
 static const struct file_operations snappy_hook_ops = {
-	.open		= hook_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= seq_release,
+	.read 		= snappy_get_bpf,
+	.open		= snappy_hook_open,
+	.write		= snappy_remove_bpf,
+	//.read		= seq_read,
+	//.llseek		= seq_lseek,
+	//.release	= seq_release,
 };
 
 int snappy_fs_initialized;
@@ -174,9 +176,9 @@ void snappy_free_hook(struct snappy_hook *h)
 }
 int snappy_init_hook(struct snappy_hook *h) {
 	struct dentry *h_dentry;
-
-	h_dentry = securityfs_create_file(h->name, 0777, snappy_policy_dir,
-			NULL, &snappy_hook_ops);
+	int*type = kmalloc(sizeof(int) , GFP_KERNEL);
+	*type = h->h_type;
+	h_dentry = securityfs_create_file(h->name, 0777, snappy_policy_dir, type, &snappy_hook_ops);
 
 	if (IS_ERR(h_dentry))
 		return PTR_ERR(h_dentry);
@@ -198,6 +200,12 @@ static const struct file_operations snappy_list_ops = {
 	.read = snappy_get_helpers,
 };
 
+//static const struct file_operations snappy_list_bpf_ops = {
+//	.read = snappy_get_bpf,
+//};
+
+
+
 /*static const tree_descr snappy_files[] = {
 	{"snappy_load", 0600, &snappy_load_ops},
 	{"list_helpers", 0777, &snappy_load_ops},
@@ -215,8 +223,15 @@ static int __init snappy_fs_policy_init(void) {
 		return PTR_ERR(h_dentry);
 	}
 
+//	h_dentry = securityfs_create_file("list_bpf", 0777, snappy_dir, NULL, &snappy_list_bpf_ops);
+//	if(IS_ERR(h_dentry)) {
+//		printk(KERN_INFO "ERROR");
+//		return PTR_ERR(h_dentry);
+//	}
+
 	return 0;
 }
+
 
 static int __init snappy_fs_init(void)
 {

@@ -189,6 +189,7 @@ always-y += xdpsock_kern.o
 
 always-y += snappy_CVERunC.o
 always-y += snappy_CVESudo.o
+always-y += snappy_testStateful.o
 
 ifeq ($(ARCH), arm)
 # Strip all except -D__LINUX_ARM_ARCH__ option needed to handle linux
